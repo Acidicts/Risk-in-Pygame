@@ -1,6 +1,8 @@
 import os
 import pygame as pg
+
 from src.geo import World
+from src.player import Player
 
 
 class Game:
@@ -13,6 +15,9 @@ class Game:
         self.BASE_PATH = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/").replace("/src", "")
 
         self.world = World(self.BASE_PATH)
+        self.phase = "place_units"
+
+        self.player = Player(self.world.countries.get("France"), self.world, (0, 0, 255))
 
     def run(self) -> None:
         while self.playing:
@@ -36,7 +41,8 @@ class Game:
                     self.playing = False
 
     def update(self) -> None:
-        pass
+        self.world.update()
+        self.player.update(self.phase)
 
     def draw(self) -> None:
         self.world.draw(self.screen)
