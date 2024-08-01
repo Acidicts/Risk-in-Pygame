@@ -3,21 +3,39 @@ import pygame as pg
 
 from src.geo import World
 from src.player import Player
+from src.utils import draw_text
 
 
 class Game:
     def __init__(self, screen, clock, window_size) -> None:
+        self.finish_phase_button_hovered = None
+
+        self.finish_phase_button = None
+        self.finish_phase_image = None
+        
+        self.current_phase_rect = None
+        self.current_phase = None
+        
         self.screen = screen
         self.clock = clock
         self.window_size = window_size
         self.playing = True
 
+        self.font = pg.font.SysFont(None, 20)
+
         self.BASE_PATH = os.path.dirname(os.path.abspath(__file__)).replace("\\", "/").replace("/src", "")
 
         self.world = World(self.BASE_PATH)
-        self.phase = "place_units"
+
+        self.phases = ["place_units", "move_units", "attack_country"]
+        self.phase_idx = 0
+
+        self.phase = self.phases[self.phase_idx]
+        self.phase_timer = pg.time.get_ticks()
 
         self.player = Player(self.world.countries.get("France"), self.world, (0, 0, 255))
+
+        self.create_phase_ui()
 
     def run(self) -> None:
         while self.playing:
@@ -41,8 +59,55 @@ class Game:
                     self.playing = False
 
     def update(self) -> None:
+        now = pg.time.get_ticks()
+
         self.world.update()
         self.player.update(self.phase)
 
+        self.finish_phase_button_hovered = False
+        if self.finish_phase_button.collidepoint(pg.mouse.get_pos()):
+            self.finish_phase_button_hovered = True
+
+        if self.finish_phase_button_hovered:
+            if pg.mouse.get_pressed()[0] and (now - self.phase_timer) > 500:
+                self.phase_timer = now
+                self.phase_idx = (self.phase_idx + 1) % len(self.phases)
+                self.phase = self.phases[self.phase_idx]
+
     def draw(self) -> None:
+        self.draw_phase_ui()
+
         self.world.draw(self.screen)
+
+        text_surf = self.font.render("FPS: " + str(round(self.clock.get_fps())), True, (255, 255, 255))
+        text_rect = text_surf.get_rect(topleft=(5, 5))
+        self.screen.blit(text_surf, text_rect)
+
+    def create_phase_ui(self) -> None:
+        self.current_phase = pg.Surface((200, 50))
+        self.current_phase.fill((25, 42, 86))
+        self.current_phase_rect = self.current_phase.get_rect(topleft=(10, 10))
+        
+        self.finish_phase_image = pg.Surface((200, 50))
+        self.finish_phase_image.fill((25, 42, 86))
+        self.finish_phase_button = self.finish_phase_image.get_rect(topleft=(10, 70))
+        self.finish_phase_button_hovered = False
+
+    def draw_phase_ui(self) -> None:
+        self.screen.blit(self.current_phase, self.current_phase_rect)
+        if self.phase == "place_units":
+            draw_text(self.screen, self.font, "Place Units", (255, 255, 255), self.current_phase_rect.centerx,
+                      self.current_phase_rect.centery, True)
+        elif self.phase == "move_units":
+            draw_text(self.screen, self.font, "Move Units", (255, 255, 255), self.current_phase_rect.centerx,
+                      self.current_phase_rect.centery, True)
+        elif self.phase == "attack_country":
+            draw_text(self.screen, self.font, "Attack", (255, 255, 255), self.current_phase_rect.centerx,
+                      self.current_phase_rect.centery, True)
+
+        if self.finish_phase_button_hovered:
+            self.finish_phase_image.fill((120, 32, 42))
+
+        self.screen.blit(self.finish_phase_image, self.finish_phase_button)
+        draw_text(self.screen, self.font, "Finish Phase", (255, 255, 255), self.finish_phase_button.centerx,
+                  self.finish_phase_button.centery, True)

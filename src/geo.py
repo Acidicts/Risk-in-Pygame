@@ -25,14 +25,14 @@ class Country:
         if Point(mouse_pos[0], mouse_pos[1]).within(self.polygon):
             self.hovered = True
 
-    def draw(self, screen, scroll) -> None:
+    def draw(self, screen, scroll, font) -> None:
         if self.hovered:
             col = (255, 0, 0)
         else:
             col = self.color
         pg.draw.polygon(screen, col, [(x - scroll.x, y - scroll.y) for x, y in self.coords])
         pg.draw.polygon(screen, (255, 255, 255), [(x - scroll.x, y - scroll.y) for x, y in self.coords], width=1)
-        draw_text(screen, str(self.units), (255, 255, 255), self.center.x - scroll[0], self.center.y - scroll[1], True)
+        draw_text(screen, font, str(self.units), (255, 255, 255), self.center.x - scroll[0], self.center.y - scroll[1], True)
 
     def get_center(self) -> pg.Vector2:
         return pg.Vector2(
@@ -51,8 +51,10 @@ class World:
 
         self.geo_data = {}
         self.read_geo_data()
+        self.font = pg.font.SysFont(None, 20)
 
         self.countries = self.create_countries()
+        self.create_neighbors()
 
         self.scroll = pg.Vector2(3650, 395)
 
@@ -81,7 +83,7 @@ class World:
 
     def draw(self, surf) -> None:
         for country in self.countries.values():
-            country.draw(surf, self.scroll)
+            country.draw(surf, self.scroll, self.font)
         if self.hovered_country is not None:
             self.draw_hovered_country(surf)
 
@@ -115,11 +117,11 @@ class World:
         surf.blit(self.hover_surf, (1280 - 310, 720 - 110))
         draw_text(
             surf,
+            self.font,
             self.hovered_country.name,
             (255, 255, 255),
             1280 - 160, 720 - 90,
-            True,
-            24
+            True
         )
 
         draw_multiline_text(
@@ -130,3 +132,35 @@ class World:
             1280 - 160, 720 - 70,
             True,
             20)
+
+    def create_neighbors(self) -> None:
+        for k, v in self.countries.items():
+            v.neighbors = self.get_country_neighbors(k)
+
+    def get_country_neighbors(self, country) -> list:
+        neighbors = []
+
+        country_poly = self.countries.get(country).polygon
+
+        for other_country_key, other_country_value in self.countries.items():
+            if country != other_country_key:
+                if country_poly.intersects(other_country_value.polygon):
+                    neighbors.append(other_country_key)
+
+        islands = {
+            "United Kingdom": ["Ireland", "France", "Iceland"],
+            "Ireland": ["United Kingdom", "Iceland"],
+            "Iceland": ["United Kingdom", "Ireland"],
+            "France": ["United Kingdom"],
+            "Denmark": ["Norway", "Sweden"],
+            "Norway": ["Denmark"],
+            "Sweden": ["Denmark"],
+            "Finland": ["Estonia"],
+            "Estonia": ["Finland"],
+        }
+
+        for island, neighbor in islands.items():
+            if country == island:
+                neighbors += neighbor
+
+        return neighbors
