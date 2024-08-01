@@ -19,6 +19,9 @@ class Country:
         self.color = (72, 126, 176)
         self.hovered = False
 
+        self.controlled_by = self.name
+        self.has_attacked = False
+
     def update(self, mouse_pos) -> None:
         self.hovered = False
 
@@ -32,7 +35,8 @@ class Country:
             col = self.color
         pg.draw.polygon(screen, col, [(x - scroll.x, y - scroll.y) for x, y in self.coords])
         pg.draw.polygon(screen, (255, 255, 255), [(x - scroll.x, y - scroll.y) for x, y in self.coords], width=1)
-        draw_text(screen, font, str(self.units), (255, 255, 255), self.center.x - scroll[0], self.center.y - scroll[1], True)
+        draw_text(screen, font, str(self.units), (255, 255, 255),
+                  self.center.x - scroll[0], self.center.y - scroll[1], True)
 
     def get_center(self) -> pg.Vector2:
         return pg.Vector2(
@@ -46,8 +50,8 @@ class World:
     MAP_WIDTH = 2.05 * 4000
     MAP_HEIGHT = 1.0 * 4000
 
-    def __init__(self, BASE_PATH) -> None:
-        self.BASE_PATH = BASE_PATH
+    def __init__(self, base_path) -> None:
+        self.BASE_PATH = base_path
 
         self.geo_data = {}
         self.read_geo_data()
@@ -61,6 +65,8 @@ class World:
         self.hovered_country = None
         self.hover_surf = pg.Surface((300, 100), pg.SRCALPHA)
         self.hover_surf.fill((25, 42, 86, 155))
+
+        self.battle_res = None
 
     def read_geo_data(self) -> None:
         with open(self.BASE_PATH + "/data/country_coords.json", "r") as f:
@@ -164,3 +170,43 @@ class World:
                 neighbors += neighbor
 
         return neighbors
+
+    def battle(self, attacker, defender) -> None:
+        a_c = self.countries[attacker]
+        d_c = self.countries[defender]
+
+        a_c.has_attacked = True
+
+        res = {
+            "attacking": attacker,
+            "defending": defender,
+            "victory": False,
+            "attacking_country_losses": 0,
+            "defending_country_losses": 0,
+        }
+
+        while a_c.units > 1 and d_c.units > 0:
+
+            if a_c.units - d_c.units > 2:
+                attack_dice = max(random.randint(1, 6), random.randint(1, 6))
+            else:
+                attack_dice = random.randint(1, 6)
+
+            defender_dice = random.randint(1, 6)
+            
+            if attack_dice > defender_dice:
+                d_c.units -= 1
+                res["defending_country_losses"] += 1
+            else:
+                a_c.units -= 1
+                res["attacking_country_losses"] += 1
+            
+            if d_c.units == 0:
+                res["victory"] = True
+        
+        if res["victory"]:
+            d_c.units = 1
+            a_c.units -= 1
+            
+        self.battle_res = res
+        

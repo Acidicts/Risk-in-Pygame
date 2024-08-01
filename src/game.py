@@ -64,6 +64,11 @@ class Game:
         self.world.update()
         self.player.update(self.phase)
 
+        if self.world.battle_res is not None:
+            if self.world.battle_res["victory"]:
+                if self.world.battle_res["attacking"] in self.player.controlled_countries:
+                    self.player.conquer(self.world.countries[self.world.battle_res["defending"]])
+
         self.finish_phase_button_hovered = False
         if self.finish_phase_button.collidepoint(pg.mouse.get_pos()):
             self.finish_phase_button_hovered = True
@@ -73,6 +78,10 @@ class Game:
                 self.phase_timer = now
                 self.phase_idx = (self.phase_idx + 1) % len(self.phases)
                 self.phase = self.phases[self.phase_idx]
+                for country in self.world.countries:
+                    self.world.countries[country].has_attacked = False
+                if self.phase == "place_units":
+                    self.player.reset_turn()
 
     def draw(self) -> None:
         self.draw_phase_ui()
